@@ -1,4 +1,5 @@
-const CACHE = 'reminder-buddy-v1';
+// Bump CACHE on every deploy so the new service worker activates and clears the old cache.
+const CACHE = 'reminder-buddy-v2';
 const ASSETS = [
   './', 'index.html', 'app.js', 'manifest.webmanifest',
   'fonts/instrument.woff2', 'fonts/instrument-ext.woff2',
@@ -18,15 +19,32 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Cache-first: the app is fully self-contained, so serve from cache and fall
-// back to the network (then cache the response) for anything not yet stored.
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request).then((resp) => {
-      const copy = resp.clone();
-      caches.open(CACHE).then((c) => c.put(e.request, copy));
-      return resp;
-    }).catch(() => caches.match('index.html')))
-  );
+  const url = new URL(e.request.url);
+  const isShell =
+    e.request.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
+    /\/(index\.html|app\.js|manifest\.webmanifest)$/.test(url.pathname);
+
+  if (isShell) {
+    // Network-first for the app shell: when online you always get the latest
+    // version; offline (or on failure) fall back to the cached copy.
+    e.respondWith(
+      fetch(e.request).then((resp) => {
+        const copy = resp.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        return resp;
+      }).catch(() => caches.match(e.request).then((hit) => hit || caches.match('index.html')))
+    );
+  } else {
+    // Cache-first for fonts/icons — they rarely change, so prefer speed.
+    e.respondWith(
+      caches.match(e.request).then((hit) => hit || fetch(e.request).then((resp) => {
+        const copy = resp.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        return resp;
+      }))
+    );
+  }
 });
