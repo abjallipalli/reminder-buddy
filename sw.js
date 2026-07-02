@@ -1,5 +1,5 @@
 // Bump CACHE on every deploy so the new service worker activates and clears the old cache.
-const CACHE = 'reminder-buddy-v2';
+const CACHE = 'reminder-buddy-v3';
 const ASSETS = [
   './', 'index.html', 'app.js', 'manifest.webmanifest',
   'fonts/instrument.woff2', 'fonts/instrument-ext.woff2',
