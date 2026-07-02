@@ -67,7 +67,20 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js').catch(function () {});
+        var hadController = !!navigator.serviceWorker.controller;
+        navigator.serviceWorker.register('sw.js').then(function (reg) {
+          // Check for a new version on every launch.
+          reg.update();
+          setInterval(function () { reg.update(); }, 60 * 60 * 1000);
+        }).catch(function () {});
+        // When a new service worker takes control, reload once so the user
+        // immediately gets the latest version (no manual cache clearing).
+        var refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (refreshing || !hadController) return; // skip the very first install
+          refreshing = true;
+          window.location.reload();
+        });
       });
     }
   </script>
